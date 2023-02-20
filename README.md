@@ -1,5 +1,4 @@
 # taskSchedule
-task scheduling
 
 // The goal is to create a task management system that runs efficiently and stores tasks 
 // in a MongoDB database to prevent data loss in case of server restarts. Each task should 
