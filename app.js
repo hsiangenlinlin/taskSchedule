@@ -7,14 +7,10 @@
 
 const mongoose = require('mongoose')
 const Task = require('./Task')
-//const express = require('express')
+const global = require('global/window')
+
 const uri = 'mongodb://127.0.0.1:27017/taskDB'
 
-// const Task = new mongoose.Schema({
-//   date: Date,
-//   callback: String,
-//   data: Object
-// })
 
 async function connect() {
   try {
@@ -28,11 +24,11 @@ async function connect() {
 
 
 // Define callback functions for completing tasks
-async function sendEmail(params){
+global.sendEmail = async function (params){
     console.log(`sending email from ${params.from} to ${params.to}. Title: ${params.title}, Content: ${params.content}`)
 }
 
-async function doPayment(params){
+global.doPayment = async function (params){
     console.log(`Processing payment of ${params.amount} from ${params.from} to ${params.to}`)
 }
 // add tasks to the schedule
@@ -44,24 +40,32 @@ async function scheduleTask(date, callback, params){
 
 async function executeTasks() {
   // Find tasks whose date has arrived
-  const tasks = await Task.find({ date: { $lt: new Date() } })
+  const tasks = await Task.find({ date: { $lt: new Date() } });
 
   // Execute each task's callback function in tasks
   for (const task of tasks) {
-    const callback = task.callback
-    callback(task.params)
+    const callbackName = task.callback 
+    const callback = global[callbackName]
 
-    // Remove task after finish the task
-    await task.deleteOne()
+    try {
+      //const callback = new Function(callbackString);
+      await callback(task.params)
+      // Remove task after finish the task
+      await task.deleteOne()
+      console.log(`Task ${task._id} had been executed and deleted`)
+    } catch (error) {
+      console.error(`Error executing task ${task._id}: ${error}`)
+    }
   }
 }
 
 async function implementation(){
   await connect()
-  await scheduleTask(new Date('2023-02-19T15:47:00'), doPayment, { from: "Halil", to: "Ahmet", amount: 100 })
-  await scheduleTask(new Date('2023-02-20T15:47:20'), sendEmail, {from:"from@example.com" ,to: "to@example.com", title: "Greeting", content:"how are you doing?"})
-  // execute every 5 seconds
-  setInterval(executeTasks, 5000)
+  await scheduleTask(new Date('2023-02-19T15:47:00'), 'doPayment', { from: "Halil", to: "Ahmet", amount: 100 })
+  await scheduleTask(new Date('2023-02-20T15:47:20'), 'sendEmail', {from:"from@example.com" ,to: "to@example.com", title: "Greeting", content:"how are you doing?"})
+  //execute every 2 seconds
+  setInterval(executeTasks, 2000)
+  console.log(new Date())
 }
 
 implementation()

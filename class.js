@@ -1,6 +1,16 @@
 const mongoose = require('mongoose')
 const Task = require('./Task')
+const global = require('global/window')
 
+// Define callback functions for completing tasks
+global.sendEmail = async function(params){
+    console.log(`sending email from ${params.from} to ${params.to}. Title: ${params.title}, Content: ${params.content}`)
+}
+
+
+global.doPayment = async function(params){
+    console.log(`Processing payment of ${params.amount} from ${params.from} to ${params.to}`)
+}
 class Schedule{
     constructor(uri){
         this.uri = uri
@@ -22,14 +32,7 @@ class Schedule{
         }
     }
 
-    // Define callback functions for completing tasks
-    async sendEmail(params){
-        console.log(`sending email from ${params.from} to ${params.to}. Title: ${params.title}, Content: ${params.content}`)
-    }
-
-    async doPayment(params){
-        console.log(`Processing payment of ${params.amount} from ${params.from} to ${params.to}`)
-    }
+    
 
 
     // add tasks to the schedule
@@ -58,31 +61,41 @@ class Schedule{
         }
     }
 
+
     async executeTasks() {
         // Find tasks whose date has arrived
-        const tasks = await Task.find({ date: { $lt: new Date() } })
+        const tasks = await Task.find({ date: { $lt: new Date() } });
 
+      
         // Execute each task's callback function in tasks
         for (const task of tasks) {
-            const callback = task.callback
-            if (typeof callback === 'function') {
-                callback(task.params)
-            }
-
+          const callbackName = task.callback 
+          const callback = global[callbackName]
+      
+          try {
+            await callback(task.params)
             // Remove task after finish the task
             await task.deleteOne()
+            console.log(`Task ${task._id} had been executed and deleted`)
+          } catch (error) {
+            console.error(`Error executing task ${task._id}: ${error}`)
+          }
+      
+          
         }
-    }
+      }
+      
+    
 
 }
 
-
 async function main(){
     const schedule = new Schedule('mongodb://127.0.0.1:27017/taskDB')
-    await schedule.scheduleTask(new Date('2023-02-20T19:05:00'), schedule.doPayment, { from: "Halil", to: "Ahmet", amount: 100 })
-    await schedule.scheduleTaskIntervally(3000, schedule.sendEmail, {from:"from@example.com" ,to: "to@example.com", title: "Greeting", content:"how are you doing?"})
+    //await schedule.scheduleTask(new Date('2023-02-21T23:42:00'), schedule.doPayment, { from: "Halil", to: "Ahmet", amount: 100 })
+    await schedule.scheduleTask(new Date('2023-02-21T23:42:00'), 'sendEmail', {from:"from@example.com" ,to: "to@example.com", title: "Greeting", content:"how are you doing?"})
+    //console.log(new Date())
+    //await schedule.deleteTaskById('63f24262f34b1a96437a12a9')
     
-    await schedule.deleteTaskById('63f24262f34b1a96437a12a9')
 }
 
 main()

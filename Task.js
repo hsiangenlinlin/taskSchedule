@@ -5,8 +5,8 @@ const mongoose = require('mongoose')
 
 const taskSchema = new mongoose.Schema({
     date: Date,
-    callback: String,
-    params: mongoose.Schema.Types.Mixed
+    callback: {type: String, required: true},
+    params: {type: mongoose.Schema.Types.Mixed, required: true}
 });
 
 module.exports = mongoose.model('Task', taskSchema)
